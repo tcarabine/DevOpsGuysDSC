@@ -33,9 +33,9 @@ configuration cTeamCityBuildAgentAndService
         [pscredential] $ServiceCredential
     )
 
-    Import-DscResource -ModuleName cPSDesiredStateConfiguration -Name PSHOrg_cServiceResource
-    Import-DscResource -ModuleName cNetworking -Name PSHOrg_cFirewall
     Import-DscResource -ModuleName DOG_TeamCityResources -Name DOG_TeamCityBuildAgent, DOG_TeamCityBuildAgentServiceConfigFile
+    Import-DscResource -ModuleName xPSDesiredStateConfiguration -ModuleVersion "6.0.0.0"
+    Import-DscResource -ModuleName xNetworking -ModuleVersion "3.2.0.0"
 
     if (-not $ServiceCredential -and -not $ServiceBuiltInAccount)
     {
@@ -70,29 +70,45 @@ configuration cTeamCityBuildAgentAndService
             DependsOn   = "[cTeamCityBuildAgent]Agent_$guid"
         }
 
-        cService "AgentService_$guid"
-        {
-            Name           = $ServiceName
-            BuiltInAccount = $ServiceBuiltInAccount
-            Credential     = $ServiceCredential
-            DisplayName    = $ServiceDisplayName
-            Description    = $ServiceDescription
-            Ensure         = 'Present'
-            State          = 'Running'
-            Path           = "`"$binaryPath`" -s `"$configPath`""
-            DependsOn      = @(
-                "[cTeamCityBuildAgent]Agent_$guid"
-                "[cTeamCityBuildAgentServiceConfigFile]AgentServiceConfig_$guid"
-            )
+        if($ServiceCredential) {
+            Service "AgentService_$guid"
+            {
+                Name           = $ServiceName
+                Credential     = $ServiceCredential
+                DisplayName    = $ServiceDisplayName
+                Description    = $ServiceDescription
+                Ensure         = 'Present'
+                State          = 'Running'
+                Path           = "`"$binaryPath`" -s `"$configPath`""
+                DependsOn      = @(
+                    "[cTeamCityBuildAgent]Agent_$guid"
+                    "[cTeamCityBuildAgentServiceConfigFile]AgentServiceConfig_$guid"
+                )
+            }
+        } else {
+            Service "AgentService_$guid"
+            {
+                Name           = $ServiceName
+                BuiltInAccount = $ServiceBuiltInAccount
+                DisplayName    = $ServiceDisplayName
+                Description    = $ServiceDescription
+                Ensure         = 'Present'
+                State          = 'Running'
+                Path           = "`"$binaryPath`" -s `"$configPath`""
+                DependsOn      = @(
+                    "[cTeamCityBuildAgent]Agent_$guid"
+                    "[cTeamCityBuildAgentServiceConfigFile]AgentServiceConfig_$guid"
+                )
+            }
         }
 
-        cFirewall "FirewallRule_$guid"
+        xFirewall "FirewallRule_$guid"
         {
             Name        = "TeamCityAgent_$ServiceName"
             DisplayName = 'TeamCity Build Agent incoming port'
             Ensure      = 'Present'
-            Access      = 'Allow'
-            State       = 'Enabled'
+            Action      = 'Allow'
+            Enabled     = $true
             Profile     = 'Any'
             Direction   = 'Inbound'
             Protocol    = 'TCP'
@@ -101,7 +117,7 @@ configuration cTeamCityBuildAgentAndService
     }
     else
     {
-        cService "AgentService_$guid"
+        Service "AgentService_$guid"
         {
             Name   = $ServiceName
             Ensure = 'Absent'
@@ -112,13 +128,13 @@ configuration cTeamCityBuildAgentAndService
             InstallPath       = $InstallPath
             TeamCityServerUrl = $TeamCityServerUrl
             Ensure            = 'Absent'
-            DependsOn         = "[cService]AgentService_$guid"
+            DependsOn         = "[Service]AgentService_$guid"
         }
 
-        cFirewall "FirewallRule_$guid"
+        xFirewall "FirewallRule_$guid"
         {
             Name   = "TeamCityAgent_$ServiceName"
-            Access = 'Allow'
+            Action = 'Allow'
             Ensure = 'Absent'
         }
     }

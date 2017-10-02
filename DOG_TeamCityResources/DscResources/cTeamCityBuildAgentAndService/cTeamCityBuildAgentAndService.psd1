@@ -12,7 +12,7 @@
 RootModule = 'cTeamCityBuildAgentAndService.schema.psm1'
 
 # Version number of this module.
-ModuleVersion = '1.0.1'
+ModuleVersion = '1.1.0'
 
 # ID used to uniquely identify this module
 GUID = '1c39821d-ea18-4778-bbc6-ded28f52a111'
